@@ -94,8 +94,11 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-    - name: Deploy Amazon ECS task definition
+    - name: Fill in the Amazon ECS task definition
       run: |
         echo "ECS_TASK_DEFINITION=$(aws ecs list-task-definitions --family-prefix ${{ github.event.inputs.appName }} --sort DESC --max-items 1 | grep arn | tr -d "\"" | tr -d " ")" >> $GITHUB_ENV
+        
+    - name: Deploy Amazon ECS task definition
+      run: |
         echo "${{ env.ECS_TASK_DEFINITION }}"
         aws ecs update-service --region ${{ github.event.inputs.setRegion }} --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --task-definition ${{ env.ECS_TASK_DEFINITION }} --force-new-deployment
