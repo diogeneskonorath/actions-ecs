@@ -90,7 +90,7 @@ jobs:
         # push it to ECR so that it can
         # be deployed to ECS.
         cd ./app
-        docker build -t ${{ env.IMAGE_TAG}} --build-arg config_env=${{ github.event.inputs.setEnvironment }} .
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG --build-arg config_env=${{ github.event.inputs.setEnvironment }} .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
