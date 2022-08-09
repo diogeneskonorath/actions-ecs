@@ -96,7 +96,7 @@ jobs:
 
     - name: Fill in the Amazon ECS task definition
       run: |
-        echo "ECS_TASK_DEFINITION=$(aws ecs list-task-definitions --family-prefix $application --sort DESC --max-items 1 | grep arn | tr -d "\"" | tr -d " ")" >> $GITHUB_ENV
+        echo "ECS_TASK_DEFINITION=$(aws ecs list-task-definitions --family-prefix ${{ github.event.inputs.appName }} --sort DESC --max-items 1 | grep arn | tr -d "\"" | tr -d " ")" >> $GITHUB_ENV
         
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
