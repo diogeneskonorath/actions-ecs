@@ -27,19 +27,34 @@
 name: Deploy to Amazon ECS
 
 on:
-  push:
-    branches:
-      - "main"
+  workflow_dispatch:
+    inputs:
+      setRegion:
+        description: 'Set region to deploy:'     
+        required: true
+        default: 'us-east-1' 
+        type: choice
+        options:
+        - us-east-1
+        - us-east-2
+      setEnvironment:
+        description: 'Set environment to deploy:'     
+        required: true
+        default: 'dev' 
+        type: choice
+        options:
+        - prd
+        - dev
+        - stg  
+      appName:
+        description: 'Application name:'
+        required: true
 
 env:
-  AWS_REGION: MY_AWS_REGION                   # set this to your preferred AWS region, e.g. us-west-1
-  ECR_REPOSITORY: MY_ECR_REPOSITORY           # set this to your Amazon ECR repository name
-  ECS_SERVICE: MY_ECS_SERVICE                 # set this to your Amazon ECS service name
-  ECS_CLUSTER: MY_ECS_CLUSTER                 # set this to your Amazon ECS cluster name
-  ECS_TASK_DEFINITION: MY_ECS_TASK_DEFINITION # set this to the path to your Amazon ECS task definition
-                                               # file, e.g. .aws/task-definition.json
-  CONTAINER_NAME: MY_CONTAINER_NAME           # set this to the name of the container in the
-                                               # containerDefinitions section of your task definition
+  AWS_REGION: ${{ github.event.inputs.setRegion }}                  # set this to your preferred AWS region, e.g. us-west-1
+  ECR_REPOSITORY: dexco/${{ github.event.inputs.appName }}           # set this to your Amazon ECR repository name
+  ECS_SERVICE: ${{ github.event.inputs.appName }}-service-${{ github.event.inputs.setEnvironment }}                 # set this to your Amazon ECS service name
+  ECS_CLUSTER: template-ecs-cluster                 # set this to your Amazon ECS cluster name
 
 permissions:
   contents: read
@@ -78,18 +93,14 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-    - name: Fill in the new image ID in the Amazon ECS task definition
-      id: task-def
-      uses: aws-actions/amazon-ecs-render-task-definition@v1
-      with:
-        task-definition: ${{ env.ECS_TASK_DEFINITION }}
-        container-name: ${{ env.CONTAINER_NAME }}
-        image: ${{ steps.build-image.outputs.image }}
-
+    - name: Fill in the Amazon ECS task definition
+      run: |
+        echo "ECS_TASK_DEFINITION=$(aws ecs list-task-definitions --family-prefix $application --sort DESC --max-items 1 | grep arn | tr -d "\"" | tr -d " ")" >> $GITHUB_ENV
+        
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       with:
-        task-definition: ${{ steps.task-def.outputs.task-definition }}
+        task-definition: ${{ env.ECS_TASK_DEFINITION }}
         service: ${{ env.ECS_SERVICE }}
         cluster: ${{ env.ECS_CLUSTER }}
         wait-for-service-stability: true
