@@ -74,7 +74,7 @@ jobs:
     #- name: Fill in the Amazon ECS task definition
     #  run: |
     #    echo "ECS_TASK_DEFINITION=$(aws ecs list-task-definitions --family-prefix ${{ github.event.inputs.appName }} --sort DESC --max-items 1 | grep arn | tr -d "\"" | tr -d " ")" >> $GITHUB_ENV
-      - name: Download task definition
+    - name: Download task definition
       run: |
         aws ecs describe-task-definition --task-definition ${{ github.event.inputs.appName }} --query taskDefinition > task-definition.json
         
@@ -82,7 +82,7 @@ jobs:
     #  run: |
     #    echo "${{ env.ECS_TASK_DEFINITION }}"
     #    aws ecs update-service --region ${{ github.event.inputs.setRegion }} --cluster ${{ env.ECS_CLUSTER }} --service ${{ env.ECS_SERVICE }} --task-definition ${{ env.ECS_TASK_DEFINITION }} --force-new-deployment
-      name: Fill in the new image ID in the Amazon ECS task definition
+    - name: Fill in the new image ID in the Amazon ECS task definition
       id: task-def
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
