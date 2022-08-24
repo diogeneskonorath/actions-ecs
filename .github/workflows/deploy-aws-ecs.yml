@@ -23,9 +23,9 @@ on:
       appName:
         description: 'Application name:'
         required: true
-  push:
-    branches:
-      - main
+  #push:
+  #  branches:
+  #    - main
 
 env:
   AWS_REGION: ${{ github.event.inputs.setRegion }}                                                      # set this to your preferred AWS region, e.g. us-west-1
