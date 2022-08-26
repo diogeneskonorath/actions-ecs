@@ -1,6 +1,11 @@
 name: Deploy to Amazon ECS
 
 on:
+  # push:
+  #   branches: [ "main" ]
+  # pull_request:
+  #   branches: [ "main" ]
+  
   workflow_dispatch:
     inputs:
       setRegion:
@@ -23,9 +28,6 @@ on:
       appName:
         description: 'Application name:'
         required: true
-  #push:
-  #  branches:
-  #    - main
 
 env:
   AWS_REGION: ${{ github.event.inputs.setRegion }}                                                      # set this to your preferred AWS region, e.g. us-west-1
@@ -40,7 +42,7 @@ jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
-    environment: production
+    environment: ${{ github.event.inputs.setEnvironment }}
 
     steps:
     - name: Checkout
@@ -61,7 +63,7 @@ jobs:
       id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        IMAGE_TAG: ${{ github.sha }}
+        IMAGE_TAG: ${{ github.sha }}-${{github.run_number}}
       run: |
         # Build a docker container and
         # push it to ECR so that it can
