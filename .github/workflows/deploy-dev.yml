@@ -1,0 +1,89 @@
+name: Deploy to Amazon ECS
+
+on:
+  # push:
+  #   branches: [ "main" ]
+  # pull_request:
+  #   branches: [ "main" ]
+  
+  workflow_dispatch:
+    inputs:
+      setRegion:
+        description: 'Set region to deploy:'     
+        required: true
+        default: 'us-east-1' 
+        type: choice
+        options:
+        - us-east-1
+        - us-east-2
+      setEnvironment:
+        description: 'Set environment to deploy:'     
+        required: true
+        default: 'dev' 
+        type: choice
+        options:
+        - prd
+        - dev
+        - stg  
+      appName:
+        description: 'Application name:'
+        required: true
+
+env:
+  AWS_REGION: ${{ github.event.inputs.setRegion }}                                                      # set this to your preferred AWS region, e.g. us-west-1
+  ECR_REPOSITORY: dexco/${{ github.event.inputs.appName }}                                              # set this to your Amazon ECR repository name
+  ECS_SERVICE: ${{ github.event.inputs.appName }}-service-${{ github.event.inputs.setEnvironment }}     # set this to your Amazon ECS service name
+  ECS_CLUSTER: template-ecs-cluster                                                                     # set this to your Amazon ECS cluster name
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.setEnvironment }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}-${{github.run_number}}
+      run: |
+        # Build a docker container and
+        # push it to ECR so that it can
+        # be deployed to ECS.
+        cd ./app
+        docker build -t $ECR_REPOSITORY:latest --build-arg config_env=${{ github.event.inputs.setEnvironment }} .
+        docker tag $ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker tag $ECR_REPOSITORY:latest $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+    - name: Download task definition
+      run: |
+        aws ecs describe-task-definition --task-definition ${{ github.event.inputs.appName }} --query taskDefinition > task-definition.json
+        
+    - name: Deploy Amazon ECS task definition
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: task-definition.json
+        service: ${{ env.ECS_SERVICE }}
+        cluster: ${{ env.ECS_CLUSTER }}
+        wait-for-service-stability: true
